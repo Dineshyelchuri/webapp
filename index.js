@@ -283,4 +283,8 @@ app.put("/v1/user/:userId", async (req, res) => {
     //end of db.getConnection()
 });
 
+app.get("/healthz", async (req, res) => {
+    res.status(200).send("OK");
+  });
+
 module.exports=app;
