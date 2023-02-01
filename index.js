@@ -286,5 +286,4 @@ app.put("/v1/user/:userId", async (req, res) => {
 app.get("/healthz", async (req, res) => {
     res.status(200).send("OK");
   });
-
 module.exports=app;
