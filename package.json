@@ -1,12 +1,13 @@
 {
   "name": "webapp",
   "version": "1.0.0",
-  "description": "Organization Repository",
-  "main": "index.js",
+  "description": "Cloud Computing Assignments",
+  "main": "server.js",
   "scripts": {
-    "test": "mocha --exit"
+    "test": "mocha --exit",
+    "start": "node server"
   },
-  "author": "Dinesh",
+  "author": "Dinesh Yelchuri",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.0",
@@ -19,9 +20,12 @@
   "devDependencies": {
     "assert": "^2.0.0",
     "chai": "^4.3.7",
+    "chai-http": "^4.3.0",
     "dotenv": "^16.0.3",
     "mocha": "^10.2.0",
+    "mysql2": "^3.1.1",
     "nodemon": "^2.0.20",
+    "sequelize": "^6.28.0",
     "supertest": "^6.3.3"
   }
 }
