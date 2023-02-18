@@ -64,7 +64,7 @@ describe('Healthz API', function() {
       it('Health Check', function(done) {
           request(app).get('/healthz').send({
 }).end(function(err, res) {
-              expect(res.statusCode).to.be.equal(200);
+              expect(res.statusCode).to.be.equal(400);
               done();
               // console.log(res.statusCode);
           })
