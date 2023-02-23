@@ -35,6 +35,6 @@ jobs:
           command: build
           # arguments: '-var "source_filename=${{ env.ARTIFACT_NAME }}" -var "aws_access_key_id=${{ env.AWS_ACCESS_KEY_ID }}" -var "aws_secret_access_key=${{ env.AWS_SECRET_ACCESS_KEY }}"'
           target: main.pkr.hcl
-          working_directory: ./packer/
+          working_directory: ./Packer/
 
 
