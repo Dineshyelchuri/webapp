@@ -3,9 +3,11 @@ Dinesh -002760628
 
 This is the Repository for CSYE6225 - Cloud Computing and Networking Structures
 
-Prerequisites: NodeJS, Visual Studio Code or IntelliJ IDEA
+Prerequisites: NodeJS, Visual Studio Code 
 
 Requirements & Description : All API request/response payloads should be in JSON. No UI should be implemented for the application. As a user, I expect all APIs call to return with a proper HTTP status code.
+
+Added Packer folder that build AMI 
 
 Steps tp run the project:
 1. Clone the project to your local system
