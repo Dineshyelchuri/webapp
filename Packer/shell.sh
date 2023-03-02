@@ -23,10 +23,12 @@ sudo yum install -y nodejs
 mkdir webapp
 mv webapp.zip webapp/
 cd webapp
+
 unzip webapp.zip
 rm webapp.zip
 rm -r __MACOSX
 # cd webapp
+mkdir uploads
 npm install
 cd ..
 sudo chmod 750 webapp
