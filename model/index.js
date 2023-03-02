@@ -36,6 +36,11 @@ db.sequelize = sequelize;
 
 db.users = require("./userModel.js")(sequelize, DataTypes);
 db.products = require("./productModel")(sequelize, DataTypes);
+db.images = require("./imageModel")(sequelize, DataTypes);
+
+
+db.products.hasMany(db.images, { onDelete: 'CASCADE' });
+db.images.belongsTo(db.products);
 
 
 db.sequelize
