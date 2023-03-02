@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const multer = require("multer");
 const app = express();
+const routersImage = require("./routes/imageRouter");
+app.use("/v1/product", routersImage);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -20,6 +23,14 @@ portfinder.getPort(function (err, port) {
 
 app.get("/healthz", async (req, res) => {
   res.status(200).send("OK");
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    res.status(400).json({ message: 'Invalid field name for file upload' });
+  } else {
+    next(err);
+  }
 });
 
 module.exports = app;
