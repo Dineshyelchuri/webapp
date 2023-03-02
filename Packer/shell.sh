@@ -20,10 +20,13 @@ sudo yum install -y nodejs
 # echo 'export DB_USER=root' >> ~/.bashrc
 # echo 'export DB_PASSWORD=Dinesh@123' >> ~/.bashrc
 # echo 'export DB_HOST=localhost' >> ~/.bashrc
+mkdir webapp
+mv webapp.zip webapp/
+cd webapp
 unzip webapp.zip
 rm webapp.zip
 rm -r __MACOSX
-cd webapp
+# cd webapp
 npm install
 cd ..
 sudo chmod 750 webapp
