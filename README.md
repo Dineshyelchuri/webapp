@@ -14,5 +14,5 @@ Steps tp run the project:
 2. open the the folder in Vs code
 3. Open new terminal and rum “npm install” to install all the dependencies
 4. Now run the command “nodemon index” in the terminal
-5. Server is setup in the localhost:3306 port
+5. Server is setup in the localhost:3306 port.
 
