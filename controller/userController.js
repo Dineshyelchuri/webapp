@@ -1,6 +1,36 @@
 const db = require("../model");
 const bcrypt = require("bcrypt");
 const { users } = require("../model");
+const statsd = require("node-statsd");
+const winston = require("winston");
+
+
+// const logger = winston.createLogger({
+//   // level: 'info', // Set the logging level
+//   format: winston.format.json(), // Set the log format to JSON
+//   transports: [
+//     new winston.transports.Console(), // Log to the console
+//     new winston.transports.File({ filename: /logs/webapp_user_stories.log }) // Log to a file
+//   ]
+// });
+
+const path = require('path');
+
+const logsFolder = path.join(__dirname, '../logs');
+
+const logger = winston.createLogger({
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: path.join(logsFolder, 'csye6225.log') })
+  ]
+});
+
+const statsdClient=new statsd(
+  {host: 'localhost',
+  port: 8125}
+)
+
+
 
 const User = db.users;
 
@@ -30,6 +60,8 @@ let encryptedPassword = (password) => {
 };
 
 const adduser = async (req, res) => {
+  statsdClient.increment('POST.adduser.count');
+  logger.log('info', 'welcome to user adduser API end point');
   const allowedParams = ["first_name", "last_name", "password", "username"];
   const receivedParams = Object.keys(req.body);
   const unwantedParams = receivedParams.filter(
@@ -99,6 +131,8 @@ const adduser = async (req, res) => {
           },
         });
         console.log("-> Created New User:");
+        logger.info('created new user');
+        logger.info(newUser.id);
         console.log(newUser.id);
         res.status(201).send({
           id: newUser.id,
@@ -109,6 +143,7 @@ const adduser = async (req, res) => {
           account_updated: newUser.account_updated,
         });
       } else {
+        logger.error('User Already exists');
         console.log("-> User Already Exists");
         res.status(400).send("User Already Exists");
       }
@@ -117,6 +152,8 @@ const adduser = async (req, res) => {
 };
 
 const getuser = async (req, res) => {
+  statsdClient.increment('GET.getuser.count');
+  logger.info('this is getuser API end point');
   const userId = req.params.userId;
   let authheader = req.headers.authorization;
   if (!authheader) {
@@ -130,6 +167,7 @@ const getuser = async (req, res) => {
     var password = auth[1];
 
     if (!isEmail(username)) {
+      logger.error('please enter a valid email');
       res.status(401).send("Authentication Failed, Please enter a valid email");
     } else {
       let userDetails = await User.findOne({
@@ -167,6 +205,8 @@ const getuser = async (req, res) => {
 };
 
 const updateuser = async (req, res) => {
+  statsdClient.increment('PUT.updateuser.count');
+  logger.info('this is updateuser API endpoint which modifies user data');
   const allowedParams = ["first_name", "last_name", "password"];
   const receivedParams = Object.keys(req.body);
   const unwantedParams = receivedParams.filter(
@@ -189,6 +229,7 @@ const updateuser = async (req, res) => {
   }
 
   if (!authheader) {
+    logger.error('Unauthorized');
     res.status(401).send("Unauthorized");
   } else {
     var auth = new Buffer.from(authheader.split(" ")[1], "base64")
@@ -199,6 +240,7 @@ const updateuser = async (req, res) => {
     var password = auth[1];
 
     if (!isEmail(username)) {
+      logger.error('Authentication failed, please enter a valid email');
       res.status(401).send("Authentication Failed, Please enter valid email");
     } else {
       let userDetails = await User.findOne({
@@ -207,6 +249,7 @@ const updateuser = async (req, res) => {
         },
       });
       if (userDetails == null) {
+        logger.warn('user not found in database');
         console.log("->User not found");
         res.status(401).send("User Not Found");
       } else if (userId != userDetails.id) {
@@ -222,9 +265,11 @@ const updateuser = async (req, res) => {
             hashedPassword = userDetails.password;
 
           if (resu && username == userDetails.username) {
+            logger.info('Authentication Successful');
             console.log("Authentication Successful");
 
             if (unwantedParams.length) {
+              logger.error('please remove unwanted paraemeters from the request');
               res.status(400).send({
                 error: `The following parameters are not allowed: ${unwantedParams.join(
                   ", "
@@ -241,6 +286,7 @@ const updateuser = async (req, res) => {
                 passwordBody != "" &&
                 !checkPassword(passwordBody)
               ) {
+                logger.error('Please enter valid password');
                 res.status(400).send("Please enter valid password");
               } else if (!(checkName(firstName) && checkName(lastName)))
                 res.status(400).send("Please enter valid First and Last Names");
@@ -250,6 +296,7 @@ const updateuser = async (req, res) => {
                     id: userId,
                   },
                 });
+                logger.info('user data has updated successfully');
                 res.status(204).send(user);
               }
             }
