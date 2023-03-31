@@ -6,6 +6,12 @@ const routersImage = require("./routes/imageRouter");
 app.use("/v1/product", routersImage);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const statsd = require("node-statsd");
+
+const statsdClient=new statsd(
+  {host: 'localhost',
+  port: 8125}
+)
 
 const routers = require("./routes/userRouter.js");
 app.use("/v1/user", routers);
@@ -22,6 +28,7 @@ portfinder.getPort(function (err, port) {
 });
 
 app.get("/healthz", async (req, res) => {
+  statsdClient.increment('GET.healthz.count');
   res.status(200).send("OK");
 });
 

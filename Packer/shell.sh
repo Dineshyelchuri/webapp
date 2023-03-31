@@ -8,18 +8,43 @@ sudo amazon-linux-extras install -y epel
 sudo yum install -y curl
 curl -sL https://rpm.nodesource.com/setup_16.x | sudo -E bash -
 sudo yum install -y nodejs
-# sudo yum install npm
-# sudo yum install -y https://dev.mysql.com/get/mysql80-community-release-el7-5.noarch.rpm
-# sudo yum install -y mysql-community-server
-# sudo systemctl start mysqld
-# sudo systemctl enable mysqld
-# passwords=$(sudo grep 'temporary password' /var/log/mysqld.log | awk {'print $13'})
-# mysql -u root -p$passwords --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'Dinesh@123';"
-# mysql -u root -pDinesh@123 -e "create database cloudDB;"
-# echo 'export DB_DATABASE=cloudDB' >> ~/.bashrc
-# echo 'export DB_USER=root' >> ~/.bashrc
-# echo 'export DB_PASSWORD=Dinesh@123' >> ~/.bashrc
-# echo 'export DB_HOST=localhost' >> ~/.bashrc
+sudo curl -o amazon-cloudwatch-agent.rpm https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+sudo rpm -U amazon-cloudwatch-agent.rpm
+touch config.json
+cat <<EOF >> config.json
+{
+  "agent": {
+    "metrics_collection_interval": 10,
+    "logfile": "/var/logs/amazon-cloudwatch-agent.log"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/home/ec2-user/webapp/logs/csye6225.log",
+            "log_group_name": "csye6225",
+            "log_stream_name": "webapp"
+          }
+        ]
+      }
+    },
+    "log_stream_name": "cloudwatch_log_stream"
+  },
+  "metrics": {
+    "metrics_collected": {
+      "statsd": {
+        "service_address": ":8125",
+        "metrics_collection_interval": 15,
+        "metrics_aggregation_interval": 15
+      }
+    }
+  }
+}
+EOF
+
+sudo mv config.json /opt/aws/amazon-cloudwatch-agent/bin/
+
 mkdir webapp
 mv webapp.zip webapp/
 cd webapp
@@ -29,6 +54,7 @@ rm webapp.zip
 rm -r __MACOSX
 # cd webapp
 mkdir uploads
+mkdir logs
 npm install
 cd ..
 sudo chmod 750 webapp

@@ -4,6 +4,8 @@ const { products } = require("../model");
 const isEmail = require("./userController");
 const imageController = require("./imageController");
 const AWS = require("aws-sdk");
+const winston = require("winston");
+const statsd = require("node-statsd");
 
 
 
@@ -21,11 +23,44 @@ const s3 = new AWS.S3({
   region: process.env.aws_region,
 });
 
+// const logger = winston.createLogger({
+//   // level: 'info', // Set the logging level
+//   format: winston.format.json(), // Set the log format to JSON
+//   transports: [
+//     new winston.transports.Console(), // Log to the console
+//     new winston.transports.File({ filename: /logs/webapp_user_stories.log }) // Log to a file
+//   ]
+// });
+
+const path = require('path');
+
+const logsFolder = path.join(__dirname, '../logs');
+
+const logger = winston.createLogger({
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: path.join(logsFolder, 'csye6225.log') })
+  ]
+});
+
+logger.log('info', 'This is an informational message.');
+
+//new statsd setup
+
+const statsdClient=new statsd(
+  {host: 'localhost',
+  port: 8125}
+)
+
+
 const addproduct = async (req, res) => {
+  statsdClient.increment('POST.addproduct.count');
+  logger.log('info', 'Request received: statsd added for addproduct API end point');
   let authorizationSuccess = false;
   let userDetails = "";
   let authheader = req.headers.authorization;
   if (!authheader) {
+    logger.log('error', 'Authorization header not found for addproduct API end point');
     res.status(401).send("Unauthorized");
   } else {
     //User Auth Check Start
@@ -36,6 +71,7 @@ const addproduct = async (req, res) => {
     var username = auth[0];
     var password = auth[1];
     if (!isEmail.isEmail(username)) {
+      logger.log('error', 'Invalid email address provided for addproduct API end point');
       res.status(401).send("Authentication Failed, Please enter a valid email");
     } else {
       userDetails = await User.findOne({
@@ -44,13 +80,16 @@ const addproduct = async (req, res) => {
         },
       });
       if (userDetails == null) {
+        logger.log('warn', 'User not found in database for addproduct API end point');
         console.log("------> User Not Found");
         res.status("User Not Found").sendStatus(401);
       } else {
         bcrypt.compare(password, userDetails.password, (err, result) => {
+          logger.log('error', 'Error while comparing password', err);
           if (err) throw err;
           authorizationSuccess = result;
           if (authorizationSuccess) {
+            logger.log('info', 'User successfully authorized for addproduct API end point');
             console.log("Authorization Successful!");
             const allowedParams = [
               "name",
@@ -68,12 +107,14 @@ const addproduct = async (req, res) => {
             );
 
             if (unwantedParams.length) {
+              logger.log('error','The following parameters are not allowed : ${unwantedParams.join(", ")}');
               res.status(400).send({
                 error: `The following parameters are not allowed: ${unwantedParams.join(
                   ", "
                 )}`,
               });
             } else if (notReceivedParams.length) {
+              logger.log('error', `The following required parameters are not received: ${notReceivedParams.join(", ")}`);
               res.status(400).send({
                 error: `The following required parameters are not received: ${notReceivedParams.join(
                   ", "
@@ -86,32 +127,39 @@ const addproduct = async (req, res) => {
               const manufacturer = req.body.manufacturer;
               const quantity = req.body.quantity;
               if (name == undefined || name == null || name == "") {
+                logger.log('error', 'Product Name is required for addproduct API end point!');
                 res.status(400).send("Product Name is required!");
               } else if (
                 description == undefined ||
                 description == null ||
                 description == ""
               ) {
+                logger.log('error', 'Product description is required for addproduct API end point!');
                 res.status(400).send("Product description is required!");
               } else if (sku == undefined || sku == null) {
+                logger.log('error', 'Product sku is required for addproduct API end point!');
                 res.status(400).send("Product sku is required!");
               } else if (
                 manufacturer == undefined ||
                 manufacturer == null ||
                 manufacturer == ""
               ) {
+                logger.log('error', 'Product manufacturer is required for addproduct API end point!');
                 res.status(400).send("Product manufacturer is required!");
               } else if (
                 quantity == undefined ||
                 quantity == null ||
                 quantity == ""
               ) {
+                logger.log('error', 'Product quantity is required for addproduct API end point!!');
                 res.status(400).send("Product quantity is required!");
               } else if (
                 !(typeof quantity === "number" && Number.isInteger(quantity))
               ) {
+                logger.log('error', 'Product quantity needs to be Integer for addproduct API end point!!');
                 res.status(400).send("Product quantity needs to be Integer!");
               } else if (quantity < 0 || quantity > 100) {
+                logger.log('error', 'Product quantity needs to be between 1 to 100 for addproduct API end point!!');
                 res
                   .status(400)
                   .send("Product quantity needs to be between 0 to 100!");
@@ -129,6 +177,7 @@ const addproduct = async (req, res) => {
                       owner_user_id: userDetails.id,
                     };
                     createProduct(newProduct).then((product) => {
+                      logger.log('info','product created successfully');
                       let createdProductDetails = product.dataValues;
                       res.status(201).send({
                         id: createdProductDetails.id,
@@ -148,6 +197,7 @@ const addproduct = async (req, res) => {
               }
             }
           } else {
+            logger.log('error',"password is not matching for addproduct API end point!");
             console.log("Authentication Failed");
             res.status(401).send("Authentication Failed");
           }
@@ -159,12 +209,16 @@ const addproduct = async (req, res) => {
 };
 
 const getproduct = async (req, res) => {
+  statsdClient.increment('GET.getproduct.count');
+  logger.log('info','getproduct APi endpoint has started');
   const productId = req.params.productId;
   const prod = await Product.findOne({ where: { id: productId } }).then(
     (prod) => {
       if (prod == null) {
+        logger.log('error','Product not Found at getproduct API endpoint');
         res.status(404).send("Product Not Found");
       } else {
+        logger.log('info','details of the product are shown');
         res.status(200).send({
           id: prod.id,
           name: prod.name,
@@ -182,11 +236,14 @@ const getproduct = async (req, res) => {
 };
 
 const patchproduct = async (req, res) => {
+  statsdClient.increment('PATCH.patchproduct.count');
+  logger.log('info','patchproduct API endpoint has been in use for patchproduct API endpoint');
   const productId = req.params.productId;
   let authorizationSuccess = false;
   let userDetails = "";
   let authheader = req.headers.authorization;
   if (!authheader) {
+    logger.log('error','Unauthorized for patchproduct API endpoint');
     res.status(401).send("Unauthorized");
   } else {
     //User Auth Check Start
@@ -197,6 +254,7 @@ const patchproduct = async (req, res) => {
     var username = auth[0];
     var password = auth[1];
     if (!isEmail.isEmail(username)) {
+      logger.log('error','Authentication Failed, Please enter a valid email at patchproduct API endpoint');
       res.status(401).send("Authentication Failed, Please enter a valid email");
     } else {
       userDetails = await User.findOne({
@@ -205,6 +263,7 @@ const patchproduct = async (req, res) => {
         },
       });
       if (userDetails == null) {
+        logger.log('Error','User Not Found at patchproduct API endpoint');
         console.log("------> User Not Found");
         res.status("User Not Found").sendStatus(401);
       } else {
@@ -212,9 +271,11 @@ const patchproduct = async (req, res) => {
           if (err) throw err;
           authorizationSuccess = result;
           if (authorizationSuccess) {
+            logger.log('info','Authorization Successful at patchproduct API endpoint');
             console.log("Authorization Successful!");
             searchProductWithId(productId).then((product) => {
                 if(product == null){
+                  logger.log('error','Product not Found at patchproduct API endpoint');
                     res.status(400).send("Product Not Found");
                 }
               else if (userDetails.id == product.owner_user_id) {
@@ -235,6 +296,7 @@ const patchproduct = async (req, res) => {
                 );
 
                 if (unwantedParams.length) {
+                  logger.log('error',`The following parameters are not allowed at patchproduct API endpoint : ${unwantedParams.join(", ")}`);
                   res.status(400).send({
                     error: `The following parameters are not allowed: ${unwantedParams.join(
                       ", "
@@ -258,21 +320,25 @@ const patchproduct = async (req, res) => {
                     receivedParams.includes("name") &&
                     (name == null || name == "")
                   ) {
+                    logger.log('error','product name cannot be null at patchproduct API endpoint');
                     res.status(400).send("Product Name cannot be null!");
                   } else if (
                     receivedParams.includes("description") &&
                     (description == null || description == "")
                   ) {
+                    logger.log('warn','product Description is required at patchproduct API endpoint');
                     res.status(400).send("Product description is required!");
                   } else if (
                     receivedParams.includes("sku") &&
                     (sku == "" || sku == null)
                   ) {
+                    logger.log('error','Product SKU is required at patchproduct API endpoint');
                     res.status(400).send("Product sku is required!");
                   } else if (
                     receivedParams.includes("manufacturer") &&
                     (manufacturer == null || manufacturer == "")
                   ) {
+                    logger.log('error','Product manufacturer is required  for patchproduct API endpoint!')
                     res.status(400).send("Product manufacturer is required!");
                   } else if (
                     receivedParams.includes("quantity") &&
@@ -289,6 +355,7 @@ const patchproduct = async (req, res) => {
                       .status(400)
                       .send("Product quantity needs to be Integer!");
                   } else if (quantity < 0 || quantity > 100) {
+                    logger.log('error','Product quantity needs to be between 0to 100! at patchproduct API endpoint');
                     res
                       .status(400)
                       .send("Product quantity needs to be between 0 to 100!");
@@ -299,6 +366,7 @@ const patchproduct = async (req, res) => {
                       } else if (
                         productDetails.owner_user_id != userDetails.id
                       ) {
+                        logger.log('warn','productDetails userid doesnt match with userDetails userId at patchproduct API endpoint');
                         res.status(403).send("Forbidden");
                       } else {
                         if (name == undefined) name = productDetails.name;
@@ -338,6 +406,7 @@ const patchproduct = async (req, res) => {
               }
             });
           } else {
+            logger.log('error','authentication failed at patchproduct API endpoint');
             console.log("Authentication Failed");
             res.status(401).send("Authentication Failed");
           }
@@ -348,11 +417,14 @@ const patchproduct = async (req, res) => {
 };
 
 const updateproduct = async (req, res) => {
+  statsdClient.increment('PUT.updateproduct.count');
+  logger.info('this is update product API end point')
   const productId = req.params.productId;
   let authorizationSuccess = false;
   let userDetails = "";
   let authheader = req.headers.authorization;
   if (!authheader) {
+    logger.log('error','the user has been Unauthorized in updateproduct API end point');
     res.status(401).send("Unauthorized");
   } else {
     //User Auth Check Start
@@ -363,6 +435,7 @@ const updateproduct = async (req, res) => {
     var username = auth[0];
     var password = auth[1];
     if (!isEmail.isEmail(username)) {
+      logger.log('error','Authentication Failed at update product API endpoint');
       res.status(401).send("Authentication Failed, Please enter a valid email");
     } else {
       userDetails = await User.findOne({
@@ -371,6 +444,7 @@ const updateproduct = async (req, res) => {
         },
       });
       if (userDetails == null) {
+        logger.log('warn','user Not Found at update product API endpoint');
         console.log("------> User Not Found");
         res.status("User Not Found").sendStatus(401);
       } else {
@@ -378,6 +452,7 @@ const updateproduct = async (req, res) => {
           if (err) throw err;
           authorizationSuccess = result;
           if (authorizationSuccess) {
+            logger.log('info','Authorization Successful at updateproduct API endpoint!');
             console.log("Authorization Successful!");
             searchProductWithId(productId).then((product) => {
                 if(product == null){
@@ -401,6 +476,7 @@ const updateproduct = async (req, res) => {
                 );
 
                 if (unwantedParams.length) {
+                  logger.log('error','The following parameters are not allowed in updateproduct API endpoint : ${unwantedParams.join(", ")}');
                   res.status(400).send({
                     error: `The following parameters are not allowed: ${unwantedParams.join(
                       ", "
@@ -419,6 +495,7 @@ const updateproduct = async (req, res) => {
                   const manufacturer = req.body.manufacturer;
                   const quantity = req.body.quantity;
                   if (name == undefined || name == null || name == "") {
+                    logger.log('error','Product Name is required at updateproduct API endpoint');
                     res.status(400).send("Product Name is required!");
                   } else if (
                     description == undefined ||
@@ -439,6 +516,7 @@ const updateproduct = async (req, res) => {
                     quantity == null ||
                     quantity == ""
                   ) {
+                    logger.log('error','product quantity is required in updateproduct API endpoint');
                     res.status(400).send("Product quantity is required!");
                   } else if (
                     !(
@@ -455,6 +533,7 @@ const updateproduct = async (req, res) => {
                   } else {
                     searchProductWithId(productId).then((productDetails) => {
                       if (!productDetails) {
+                        logger.log('warn','product not found at updateproduct API endpoint');
                         res.status(403).send("Product not found");
                       } else if (
                         productDetails.owner_user_id != userDetails.id
@@ -490,6 +569,7 @@ const updateproduct = async (req, res) => {
               }
             });
           } else {
+            logger.log('error','Authentication is failed in UpdateProduct API end point');
             console.log("Authentication Failed");
             res.status(401).send("Authentication Failed");
           }
@@ -500,10 +580,13 @@ const updateproduct = async (req, res) => {
 };
 
 const deleteproduct = async (req, res) => {
+  statsdClient.increment('DELETE.deleteproduct.count');
+  logger.info('welcome to delete product API endpoint');
   let pId = req.params.productId;
   let userDetails = "";
   let authheader = req.headers.authorization;
   if (!authheader) {
+    logger.log('error','user has unauthorized at deleteproduct API endpoint');
     res.status(401).send("Unauthorized");
   } else {
     //User Auth Check Start
@@ -514,6 +597,7 @@ const deleteproduct = async (req, res) => {
     var username = auth[0];
     var password = auth[1];
     if (!isEmail.isEmail(username)) {
+      logger.log('error','Authentication has been failed due to wrong email address at deleteproduct API endpoint');
       res.status(401).send("Authentication Failed, Please enter a valid email");
     } else {
       userDetails = await User.findOne({
@@ -522,6 +606,7 @@ const deleteproduct = async (req, res) => {
         },
       });
       if (userDetails == null) {
+        logger.log('error','please check for the user thrown error at  deleteproduct API endpoint');
         console.log("------> User Not Found");
         res.status("User Not Found").sendStatus(401);
       } else {
@@ -529,9 +614,11 @@ const deleteproduct = async (req, res) => {
           if (err) throw err;
           authsuc = result;
           if (authsuc) {
+            logger.info('authorization successful');
             console.log("auth success");
             searchProductWithId(pId).then((productDetails) => {
               if (productDetails == null) {
+                logger.error('product details not found');
                 res.status(404).send("not found");
                 console.log(productDetails.owner_user_id);
                 console.log(userDetails.id);
@@ -540,10 +627,12 @@ const deleteproduct = async (req, res) => {
                 console.log(userDetails.id);
                 console.log(pId);
                 deleteImagesInS3WithProductId(pId).then(() =>{
+                  logger.log('info','image related to this product has been deleted');
                   deleteProduct(pId).then((rt) => res.sendStatus(204));
                 }
                 );
               } else {
+                logger.log('error','cant delete the image for this product');
                 res.status(403).send("forbidden");
               }
             });
@@ -621,8 +710,10 @@ const deleteImagesInS3WithProductId = async (productId) => {
       }).promise();
     });
     await Promise.all(promises);
+    logger.info(`Successfully deleted all images for product ID: ${productId}`);
     console.log(`Successfully deleted all images for product ID: ${productId}`);
   } catch (err) {
+    logger.error(`Error deleting images for product ID ${productId}: ${err}`);
     console.error(`Error deleting images for product ID ${productId}: ${err}`);
   }
 };
