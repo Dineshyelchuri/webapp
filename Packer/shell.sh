@@ -54,6 +54,7 @@ rm webapp.zip
 rm -r __MACOSX
 # cd webapp
 mkdir uploads
+mkdir logs
 npm install
 cd ..
 sudo chmod 750 webapp
