@@ -32,6 +32,11 @@ app.get("/healthz", async (req, res) => {
   res.status(200).send("OK");
 });
 
+app.get("/cloudhealthz", async (req, res) => {
+  statsdClient.increment('GET.cloudhealthz.count');
+  res.status(200).send("OK");
+});
+
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     res.status(400).json({ message: 'Invalid field name for file upload' });
