@@ -3,7 +3,7 @@ const cors = require("cors");
 const multer = require("multer");
 const app = express();
 const routersImage = require("./routes/imageRouter");
-app.use("/v1/product", routersImage);
+app.use("/v2/product", routersImage);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const statsd = require("node-statsd");
@@ -14,10 +14,10 @@ const statsdClient=new statsd(
 )
 
 const routers = require("./routes/userRouter.js");
-app.use("/v1/user", routers);
+app.use("/v2/user", routers);
 
 const routersProduct = require("./routes/productRouter");
-app.use("/v1/product", routersProduct);
+app.use("/v2/product", routersProduct);
 
 var portfinder = require("portfinder");
 // const { routes } = require('.')
